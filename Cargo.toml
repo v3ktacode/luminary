@@ -1,5 +1,5 @@
 [package]
-name = "msp-rust"
+name = "msp_rust"
 version = "0.1.1"
 edition = "2021"
 
@@ -13,10 +13,11 @@ opt-level = 2
 debug = false
 
 [profile.release]
-opt-level = 3
-lto = "thin" 
-codegen-units = 16
-strip = "symbols"
+opt-level = 3             # Maximum optimization
+lto = "fat"               # Full Link-Time Optimization (merges all code units)
+codegen-units = 1         # Single compilation unit = maximum inlining & obfuscation
+strip = true              # Strip all symbols and debug info
+panic = "abort"           # Remove unwinding/panic handling tables
 incremental = false
 
 [profile.test]
@@ -33,9 +34,14 @@ panic = "abort"
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 [dependencies]
+dashmap = "5"
+eframe = "0.28"
+serenity = { version = "0.12", features = ["client", "gateway", "rustls_backend", "model", "cache"] }
+dotenvy = "0.15"
 httpdate = "1"
-
-wreq = { version = "6.0.0-rc.29", features = [ # DO NOT CHAAANGE
+tokio-util = "0.7"
+axum = "0.7"
+wreq = { version = "6.0.0-rc.29", features = [
     "json",
     "cookies",
     "gzip",
@@ -44,11 +50,11 @@ wreq = { version = "6.0.0-rc.29", features = [ # DO NOT CHAAANGE
     "ws"
 ] } 
 wreq-util = "3.0.0-rc.14"
-
+encoding_rs = "0.8"
 rand = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde            = { version = "1", features = ["derive"] }
-serde_json       = "1"
+serde_json = "1"
 serde_urlencoded = "0.7"
 thiserror = "2"
 base64 = "0.22"
@@ -59,6 +65,29 @@ futures-util      = "0.3"
 rustls            = { version = "0.23", features = ["ring"] }
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+chrono = { version = "0.4", features = ["serde"] }
+metrics = "0.23"
+percent-encoding = "2.3"
+rpassword      = "7"
+hmac    = "0.12"
+sha2    = "0.10"
+
+
+# ── Anti-Reverse Engineering Dependencies ────────────────────────────────────
+obfstr = "0.4"  # Compile-time string obfuscation
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Registry",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+] }
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 tokio       = { version = "1", features = ["full", "test-util"] }
