@@ -31,6 +31,29 @@ let client = MspClient::builder()
     .build()?;
 ```
 
+### Builder Configuration Options
+
+The `MspClientBuilder` exposes fine-grained control over every aspect of client initialization:
+
+| Method | Description | Default |
+| --- | --- | --- |
+| `.config(MspConfig)` | Sets custom configuration settings. | `MspConfig::default()` |
+| `.device_id(impl Into<String>)` | Overrides the unique device identifier. | Random UUID |
+| `.profile(Profile)` | Sets the specific browser emulation profile. | `Profile::Chrome137` |
+| `.platform(Platform)` | Sets the target operating system platform. | `Platform::Windows` |
+| `.random_platform()` | Randomly selects an OS platform per session. | `false` |
+| `.random_profile(BrowserBrand)` | Randomly selects a profile from a specific brand (`Chrome`, `Firefox`, `Any`). | `None` (fixed profile) |
+| `.proxy(impl Into<String>)` | Configures a proxy URL (`http`, `socks5`, etc. ). | `None` |
+| `.enforce_proxy(bool)` | Prevents building the client if no proxy is assigned. | `false` |
+| `.timeout(Duration)` | Sets the global request timeout. | Config default |
+| `.connect_timeout(Duration)` | Sets the TCP connection timeout. | Config default |
+| `.locale(impl Into<String>)` | Overrides the `Accept-Language` header. | Derived from region |
+| `.stealth(Duration, Duration)` | Enables randomized humanized pacing between requests. | Disabled |
+| `.from_state(SessionState)` | Restores a complete session from exported state. | `None` |
+| `.presence(bool)` | Enables or disables the real-time Presence WebSocket after login. | `true` |
+
+---
+
 ### Authentication & Error Handling
 
 When authenticating against the platform, Luminary provides explicit error types to handle invalid credentials or account restrictions safely:
