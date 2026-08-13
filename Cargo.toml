@@ -13,11 +13,11 @@ opt-level = 2
 debug = false
 
 [profile.release]
-opt-level = 3             # Maximum optimization
-lto = "fat"               # Full Link-Time Optimization (merges all code units)
-codegen-units = 1         # Single compilation unit = maximum inlining & obfuscation
-strip = true              # Strip all symbols and debug info
-panic = "abort"           # Remove unwinding/panic handling tables
+opt-level = 3 
+lto = "fat" 
+codegen-units = 1  
+strip = true       
+panic = "abort"   
 incremental = false
 
 [profile.test]
@@ -72,9 +72,7 @@ rpassword      = "7"
 hmac    = "0.12"
 sha2    = "0.10"
 
-
-# ── Anti-Reverse Engineering Dependencies ────────────────────────────────────
-obfstr = "0.4"  # Compile-time string obfuscation
+obfstr = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = [
