@@ -127,7 +127,7 @@ match client.auth().login("username", "password", "FR").await {
         // reward notifications, heartbeats, …) once connected. Subscribe to
         // the event bus to receive them — any number of subscribers can
         // listen independently.
-        let mut events = client.events().subscribe();
+        let mut events = client.events();
         tokio::spawn(async move {
             while let Ok(event) = events.recv().await {
                 match event {
@@ -161,9 +161,11 @@ match client.auth().login("username", "password", "FR").await {
 <a id="presence-events"></a>
 ### Presence Events — `MspEvent`
 
-Once authenticated, the client keeps a persistent WebSocket connection to MovieStarPlanet 2's Presence server open in the background (enabled by default — see [`.presence(...)`](#builder-configuration-options)). Server-pushed events are parsed and published to an internal `EventBus`, which any number of consumers can subscribe to independently via `client.events().subscribe()`.
+Once authenticated, the client keeps a persistent WebSocket connection to MovieStarPlanet 2's Presence server open in the background (enabled by default — see [`.presence(...)`](#builder-configuration-options)). Server-pushed events are parsed and published to an internal `EventBus`. `client.events()` is a convenience that subscribes for you and returns a ready-to-use `broadcast::Receiver<MspEvent>` directly — any number of independent calls can each get their own receiver.
 
 #### `EventBus`
+
+The bus itself isn't exposed directly — `client.events()` is the entry point and is equivalent to calling `.subscribe()` on it.
 
 | Method | Returns | Description |
 | :--- | :--- | :--- |
