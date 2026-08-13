@@ -35,6 +35,7 @@ let client = MspClient::builder()
 
 - [Builder Configuration Options](#builder-configuration-options)
 - [Authentication](#authentication)
+  - [Presence Events](#presence-events)
 - [Endpoint Reference](#endpoint-reference)
   - [Greetings](#greetings)
   - [Attributes](#attributes)
@@ -116,9 +117,34 @@ Asynchronously builds the client and is safe to await from Tokio applications.
 | Other failure | `MspError` | Covers other authentication, transport, or response-processing failures. |
 
 ```rust
+use luminary::events::MspEvent;
+
 match client.auth().login("username", "password", "FR").await {
     Ok(session) => {
         println!("Successfully authenticated profile ID: {}", session.profile_id);
+
+        // The Presence server pushes events (friend requests, chat messages,
+        // reward notifications, heartbeats, …) once connected. Subscribe to
+        // the event bus to receive them — any number of subscribers can
+        // listen independently.
+        let mut events = client.events().subscribe();
+        tokio::spawn(async move {
+            while let Ok(event) = events.recv().await {
+                match event {
+                    MspEvent::MessageSent(msg) => {
+                        println!("{}: {}", msg.sender_profile_id, msg.message_body);
+                    }
+                    MspEvent::RelationshipRequestCreated(req) => {
+                        println!("Friend request from {}", req.requester_profile_id);
+                    }
+                    MspEvent::PassiveRewardEarned(reward) => {
+                        println!("Earned {} XP ({})", reward.xp, reward.reward_id);
+                    }
+                    MspEvent::PingResponse(_) => {} // heartbeat ack, usually ignored
+                    other => tracing::debug!(?other, "Unhandled presence event."),
+                }
+            }
+        });
     }
     Err(MspError::InvalidCredentials { username, region }) => {
         tracing::error!(%username, %region, "Invalid credentials.");
@@ -131,6 +157,47 @@ match client.auth().login("username", "password", "FR").await {
     }
 }
 ```
+
+<a id="presence-events"></a>
+### Presence Events — `MspEvent`
+
+Once authenticated, the client keeps a persistent WebSocket connection to MovieStarPlanet 2's Presence server open in the background (enabled by default — see [`.presence(...)`](#builder-configuration-options)). Server-pushed events are parsed and published to an internal `EventBus`, which any number of consumers can subscribe to independently via `client.events().subscribe()`.
+
+#### `EventBus`
+
+| Method | Returns | Description |
+| :--- | :--- | :--- |
+| `.subscribe()` | `broadcast::Receiver<MspEvent>` | Returns a new receiver. Each subscriber gets its own copy of every event published after it subscribes. |
+| `.subscriber_count()` | `usize` | Number of currently active subscribers. |
+
+The bus is backed by a `tokio::sync::broadcast` channel with a capacity of 256 events. A slow subscriber that falls behind starts missing the oldest buffered events rather than blocking the connection for everyone else.
+
+<br>
+
+**`MspEvent` variants**
+
+| Variant | Payload | Sent when |
+| :--- | :--- | :--- |
+| `PingResponse` | `PingResponseEvent` | The server echoes back a heartbeat ping ID. |
+| `RelationshipRequestCreated` | `RelationshipRequestCreatedEvent` | A friend/relationship request is created. |
+| `RelationshipRequestChanged` | `RelationshipRequestChangedEvent` | A friend/relationship request's state changes (accepted, declined, …). |
+| `MessageSent` | `MessageSentEvent` | A chat message is sent in a conversation the profile is part of. |
+| `PassiveRewardEarned` | `PassiveRewardEarnedEvent` | A passive reward — XP, currency, or VIP days — is earned. |
+| `Unknown` | `{ message_type: String, payload: Value }` | Any frame the client doesn't have a typed event for. The raw `messageType` and payload are preserved so nothing is silently dropped. |
+
+<br>
+
+**Event payload fields**
+
+| Event | Key fields |
+| :--- | :--- |
+| `PingResponseEvent` | `ping_id` |
+| `RelationshipRequestCreatedEvent` | `requester_profile_id`, `profile_id`, `game_id`, `target_profile_ids`, `event_name`, `event_version`, `trace_parent` |
+| `RelationshipRequestChangedEvent` | Everything `RelationshipRequestCreatedEvent` has, plus `created`, `new_state`, `old_state` |
+| `PassiveRewardEarnedEvent` | `profile_id`, `game_id`, `when`, `xp`, `currency_rewards`, `reward_id`, `sub_type`, `vip_days`, `collect: Option<RewardCollect>`, `source_profile_id`, `target_profile_ids`, `event_name`, `event_version` |
+| `MessageSentEvent` | `author`, `sender_profile_id`, `conversation_id`, `conversation_name`, `conversation_type`, `message_body`, `message_id`, `message_type`, `message_version`, `muted_profile_ids`, `target_profile_ids`, `timestamp`, `event_name`, `event_version`, `trace_parent` |
+
+> Full field types live in `luminary::events`. Every typed event derives `Serialize`/`Deserialize`, so events can be logged or persisted as JSON directly. Unrecognised frames never cause a parse failure — they fall back to `MspEvent::Unknown` instead.
 
 ---
 
