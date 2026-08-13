@@ -41,6 +41,7 @@ let client = MspClient::builder()
   - [Attributes](#attributes)
   - [Reservations](#reservations)
   - [Star Quiz Automation](#star-quiz-automation)
+  - [Quests](#quests)
   - [Messaging](#messaging)
 - [Core Features](#core-features)
 - [Disclaimer](#disclaimer)
@@ -332,6 +333,61 @@ Tuning knobs for the quiz automation, built with a chainable builder (same patte
 | `questions_seen` | Total questions observed across all sessions. |
 | `answers_submitted` | Total answers submitted. |
 | `correct_answers` | Total answers submitted that were correct. |
+
+<a id="quests"></a>
+### Quests — `client.quests()`
+
+Daily and event quests, their progress and state, and the reward pickups tied to them.
+
+#### `.get_daily_quests() -> Result<Vec<Quest>>`
+Returns every quest of the daily-facing types (`EventQuest`, `StaticDailyQuest`, `RandomDailyQuest`) for the authenticated profile.
+
+#### `.get_daily_remaining_counters() -> Result<DailyRemainingCounters>`
+Convenience summary derived from `.get_daily_quests()` — how many pet-pats and gift pickups (regular and VIP) are still needed today.
+
+#### `.get_count_of_pets_remaining_to_pet() -> Result<u32>`
+Shorthand for `.get_daily_remaining_counters().await?.pets`.
+
+#### `.get_count_pickups_remaining_to_collect() -> Result<u32>`
+Shorthand for `.get_daily_remaining_counters().await?.pickups`.
+
+#### `.get_count_pickups_vip_remaining_to_collect() -> Result<u32>`
+Shorthand for `.get_daily_remaining_counters().await?.pickups_vip`.
+
+#### `.get_random_daily_quests() -> Result<Vec<Quest>>`
+Returns the child quests under the random-daily parent quest.
+
+#### `.get_pending_random_daily_quests() -> Result<Vec<Quest>>`
+Same as above, filtered to quests that are still pending.
+
+<br>
+
+**`DailyRemainingCounters` fields**
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `pets` | `u32` | Remaining pet-pats needed today (target: 10). |
+| `pickups` | `u32` | Remaining regular gift pickups needed today (target: 4). |
+| `pickups_vip` | `u32` | Remaining VIP gift pickups needed today (target: 3). |
+
+<br>
+
+#### `.progress_quest(definition_id: &str) -> Result<Quest>`
+Increments a quest's progress by 1. Shorthand for `.set_quest_progress(definition_id, 1)`.
+
+#### `.set_quest_progress(definition_id: &str, progress: i64) -> Result<Quest>`
+Sets a quest's progress to an explicit value.
+
+#### `.state_quest(definition_id: &str, new_state: &str) -> Result<QuestStateChange>`
+Changes a quest's state — for example, marking it completed or claimed.
+
+#### `.collect_pickup() -> Result<()>`
+Claims the daily regular gift pickup reward.
+
+#### `.collect_pickup_vip() -> Result<()>`
+Claims the daily VIP gift pickup reward.
+
+> Two free functions, `random_daily_children(quests)` and `pending_random_daily_children(quests)`, back `.get_random_daily_quests()` and `.get_pending_random_daily_quests()`. They're exported for callers who already have a `Vec<Quest>` on hand and want the same filtering without an extra request.
 
 <a id="messaging"></a>
 ### Messaging — `client.messaging()`
